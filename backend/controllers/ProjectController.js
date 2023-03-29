@@ -4,17 +4,18 @@ import path from 'path';
 const projectsDirectoryDataPath = "../data/projects.json";
 const projectsDirectoryDocumentPath = `${process.cwd()}/documents/projects/`
 class ProjectController {
+  static staticId = 3
   async createProject(req, res) {
     try {
-      const { title, description } = req.body;
-      const id = parseInt(Date.now().toString());
+      const { title, description, grading, medium, originalSize,  } = req.body;
+      const id = ProjectController.staticId++;
       
       // Get the path of the uploaded file and construct the destination path using the custom directory
       const filePath = req.file.path;
       const destinationPath = `${projectsDirectoryDocumentPath}/${req.file.originalname.replace(/ /g,"_")}`;
       const image = `${process.env.BACKEND_URL}/projects/documents/${req.file.originalname.replace(/ /g,"_")}`;
       // Move the file to the custom directory
-      const newArt = { id, title, description, image };
+      const newArt = { id, title, description, image, grading };
       fs.renameSync(filePath, destinationPath);
 
       const data = JSON.parse(fs.readFileSync(projectsDirectoryDataPath));
@@ -53,11 +54,12 @@ class ProjectController {
       const art = data.find((a) => a.id === req.params.id);
 
       if (art) {
-        const { title, description } = req.body;
+        const { title, description, grading } = req.body;
         const image = req.file ? req.file.filename : art.image;
 
         art.title = title;
         art.description = description;
+        art.grading = grading;
         art.image = image;
 
         fs.writeFileSync(projectsDirectoryDataPath, JSON.stringify(data));
@@ -72,10 +74,11 @@ class ProjectController {
   async deleteProject(req, res) {
     try {
       const data = JSON.parse(fs.readFileSync(projectsDirectoryDataPath));
-      const index = data.findIndex((a) => a.id === req.params.id);
-
+      const index = data.findIndex((a) => a.id === parseInt(req.params.id));
       if (index !== -1) {
         const deleted = data.splice(index, 1)[0];
+        const fileName = deleted.image.match(/\/([^/]+)$/)[1];
+        fs.unlinkSync(projectsDirectoryDocumentPath + fileName)
         fs.writeFileSync(projectsDirectoryDataPath, JSON.stringify(data));
         res.json(deleted);
       } else {
